@@ -57,7 +57,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		return b, mksqlerror(err.Error())
 	}
 	b.db = db
-	_, err = db.Exec(`create table if not exists "USER" (id integer, email varchar(255), hash varchar(255), role varchar(255), primary key (id))`)
+	_, err = db.Exec(`create table if not exists "USER" (id SERIAL PRIMARY KEY NOT NULL, email varchar(255), hash varchar(255), role varchar(255))`)
 	if err != nil {
 		return b, mksqlerror(err.Error())
 	}
