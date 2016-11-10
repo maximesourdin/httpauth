@@ -277,7 +277,7 @@ func (a Authorizer) Authorize(rw http.ResponseWriter, req *http.Request, redirec
 	    }
 	    return mkerror("no session existed")
 	}*/
-	id := authSession.Values["id"]
+	id := authSession.Values["userID"]
 	if !authSession.IsNew && id != nil {
 		_, err := a.backend.UserByID(id.(int))
 		//_, err := a.backend.User(username.(string))
@@ -314,7 +314,7 @@ func (a Authorizer) AuthorizeRole(rw http.ResponseWriter, req *http.Request, rol
 		return mkerror(err.Error())
 	}
 	authSession, _ := a.cookiejar.Get(req, "auth") // should I check err? I've already checked in call to Authorize
-	id := authSession.Values["id"]
+	id := authSession.Values["userID"]
 	if user, err := a.backend.UserByID(id.(int)); err == nil {
 		if a.roles[user.Role] >= r {
 			return nil
@@ -333,7 +333,7 @@ func (a Authorizer) CurrentUser(rw http.ResponseWriter, req *http.Request) (user
 	}
 	authSession, _ := a.cookiejar.Get(req, "auth")
 
-	id, ok := authSession.Values["id"].(int)
+	id, ok := authSession.Values["userID"].(int)
 	if !ok {
 		return user, mkerror("User not found in authsession")
 	}
