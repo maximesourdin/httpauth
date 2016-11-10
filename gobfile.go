@@ -1,11 +1,6 @@
 package httpauth
 
-import (
-	"encoding/gob"
-	"errors"
-	"fmt"
-	"os"
-)
+import "errors"
 
 // ErrMissingBackend is returned by NewGobFileAuthBackend when the file doesn't
 // exist. Be sure to create (or touch) it if using brand new backend or
@@ -14,6 +9,7 @@ var (
 	ErrMissingBackend = errors.New("gobfilebackend: missing backend")
 )
 
+/*
 // GobFileAuthBackend stores user data and the location of the gob file.
 type GobFileAuthBackend struct {
 	filepath string
@@ -99,3 +95,4 @@ func (b GobFileAuthBackend) DeleteUser(username string) error {
 func (b GobFileAuthBackend) Close() {
 
 }
+*/

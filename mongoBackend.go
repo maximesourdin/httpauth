@@ -1,5 +1,6 @@
 package httpauth
 
+/*
 import (
 	"errors"
 	"gopkg.in/mgo.v2"
@@ -109,3 +110,4 @@ func (b MongodbAuthBackend) Close() {
 		b.session.Close()
 	}
 }
+*/

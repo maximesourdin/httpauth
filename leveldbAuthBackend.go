@@ -1,5 +1,6 @@
 package httpauth
 
+/*
 import (
 	"encoding/json"
 	"errors"
@@ -107,3 +108,4 @@ func (b LeveldbAuthBackend) DeleteUser(username string) error {
 func (b LeveldbAuthBackend) Close() {
 
 }
+*/
