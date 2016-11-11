@@ -208,7 +208,7 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 //    regenerating the hash, if a new password is passed then it regenerates the hash.
 //  If an empty email e is passed then it keeps the orginal rather than updating it,
 //    if a new email is passedn then it updates it.
-func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e string, p string) error {
+func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e string, po string, pn string) error {
 	var (
 		id    int
 		email string
@@ -234,8 +234,13 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 	} else if err != nil {
 		return mkerror(err.Error())
 	}
-	if p != "" {
-		hash, err = bcrypt.GenerateFromPassword([]byte(p), bcrypt.DefaultCost)
+	if po != "" && pn != "" {
+		verify := bcrypt.CompareHashAndPassword(user.Hash, []byte(po))
+		if verify != nil {
+			a.addMessage(rw, req, "Password doesn't match")
+			return mkerror("password doesn't match")
+		}
+		hash, err = bcrypt.GenerateFromPassword([]byte(pn), bcrypt.DefaultCost)
 		if err != nil {
 			return mkerror("couldn't save password: " + err.Error())
 		}
