@@ -178,8 +178,8 @@ func (b SqlAuthBackend) Users() (us []UserData, e error) {
 
 // SaveUser adds a new user, replacing one with the same username.
 func (b SqlAuthBackend) SaveUser(user UserData) (err error) {
-	if _, err := b.UserByEmail(user.Email); err == nil {
-		_, err = b.updateStmt.Exec(user.Email, user.Hash, user.Role)
+	if _, err := b.UserByID(user.ID); err == nil {
+		_, err = b.updateStmt.Exec(user.Email, user.Hash, user.Role, user.ID)
 	} else {
 		_, err = b.insertStmt.Exec(user.Email, user.Hash, user.Role)
 	}

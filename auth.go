@@ -215,7 +215,7 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 		hash  []byte
 		ok    bool
 	)
-	if i == 0 {
+	if i != 0 {
 		id = i
 	} else {
 		authSession, err := a.cookiejar.Get(req, "auth")
@@ -248,7 +248,7 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 		email = user.Email
 	}
 
-	newuser := UserData{Email: email, Hash: hash, Role: user.Role}
+	newuser := UserData{ID: id, Email: email, Hash: hash, Role: user.Role}
 
 	err = a.backend.SaveUser(newuser)
 	if err != nil {
