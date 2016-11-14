@@ -57,7 +57,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		return b, mksqlerror(err.Error())
 	}
 	b.db = db
-	_, err = db.Exec(`create table if not exists "USER" (id SERIAL PRIMARY KEY NOT NULL, email varchar(255), hash varchar(255), role varchar(255), confirm_key varchar(255))`)
+	_, err = db.Exec(`create table if not exists "USER" (id SERIAL PRIMARY KEY NOT NULL, email varchar(255), hash varchar(255), role varchar(255), confirm_key varchar(255), active smallint)`)
 	if err != nil {
 		return b, mksqlerror(err.Error())
 	}
@@ -71,15 +71,15 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 	//
 	// Thanks to mjhall for letting me know about this.
 	if driverName == "postgres" {
-		b.userByEmailStmt, err = db.Prepare(`select id, hash, role from "USER" where email = $1`)
+		b.userByEmailStmt, err = db.Prepare(`select id, hash, role, active from "USER" where email = $1`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyemailstmt: %v", err))
 		}
-		b.userByIDStmt, err = db.Prepare(`select email, hash, role from "USER" where id = $1`)
+		b.userByIDStmt, err = db.Prepare(`select email, hash, role, active from "USER" where id = $1`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyidstmt: %v", err))
 		}
-		b.usersStmt, err = db.Prepare(`select id, email, hash, role from "USER"`)
+		b.usersStmt, err = db.Prepare(`select id, email, hash, role, active from "USER"`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("usersstmt: %v", err))
 		}
@@ -87,7 +87,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("insertstmt: %v", err))
 		}
-		b.updateStmt, err = db.Prepare(`update "USER" set email = $1, hash = $2, role = $3 where id = $4`)
+		b.updateStmt, err = db.Prepare(`update "USER" set email = $1, hash = $2, role = $3, active = $4 where id = $5`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("updatestmt: %v", err))
 		}
@@ -96,11 +96,11 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 			return b, mksqlerror(fmt.Sprintf("deletestmt: %v", err))
 		}
 	} else {
-		b.userByEmailStmt, err = db.Prepare(`select email, hash, role from "USER" where email = ?`)
+		b.userByEmailStmt, err = db.Prepare(`select email, hash, role, active from "USER" where email = ?`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userstmt: %v", err))
 		}
-		b.userByIDStmt, err = db.Prepare(`select id, hash, role from "USER" where id = ?`)
+		b.userByIDStmt, err = db.Prepare(`select id, hash, role, active from "USER" where id = ?`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyidstmt: %v", err))
 		}
@@ -112,7 +112,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("insertstmt: %v", err))
 		}
-		b.updateStmt, err = db.Prepare(`update "USER" set email = ?, hash = ?, role = ? where id = ?`)
+		b.updateStmt, err = db.Prepare(`update "USER" set email = ?, hash = ?, role = ?, active = ? where id = ?`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("updatestmt: %v", err))
 		}
@@ -129,7 +129,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 // ErrMissingUser if user is not found.
 func (b SqlAuthBackend) UserByEmail(email string) (user UserData, e error) {
 	row := b.userByEmailStmt.QueryRow(email)
-	err := row.Scan(&user.ID, &user.Hash, &user.Role)
+	err := row.Scan(&user.ID, &user.Hash, &user.Role, &user.Active)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return user, ErrMissingUser
@@ -144,7 +144,7 @@ func (b SqlAuthBackend) UserByEmail(email string) (user UserData, e error) {
 // ErrMissingUser if user is not found.
 func (b SqlAuthBackend) UserByID(id int) (user UserData, e error) {
 	row := b.userByIDStmt.QueryRow(id)
-	err := row.Scan(&user.Email, &user.Hash, &user.Role)
+	err := row.Scan(&user.Email, &user.Hash, &user.Role, &user.Active)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return user, ErrMissingUser
@@ -165,13 +165,14 @@ func (b SqlAuthBackend) Users() (us []UserData, e error) {
 		id          int
 		email, role string
 		hash        []byte
+		active      int
 	)
 	for rows.Next() {
 		err = rows.Scan(&id, &email, &hash, &role)
 		if err != nil {
 			return us, mksqlerror(err.Error())
 		}
-		us = append(us, UserData{ID: id, Email: email, Hash: hash, Role: role})
+		us = append(us, UserData{ID: id, Email: email, Hash: hash, Role: role, Active: active})
 	}
 	return us, nil
 }

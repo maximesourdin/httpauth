@@ -50,6 +50,7 @@ type UserData struct {
 	Hash       []byte `bson:"hash"`
 	Role       string `bson:"role"`
 	ConfirmKey string `bson:"confirm_key"`
+	Active     int    `bson:"active"`
 }
 
 // Authorizer structures contain the store of user session cookies a reference
@@ -136,6 +137,10 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, e string, p
 	} else {
 		a.addMessage(rw, req, "Invalid username or password.")
 		return mkerror("user not found")
+	}
+	if user.Active == 0 {
+		a.addMessage(rw, req, "Account not active.")
+		return mkerror("Account not active")
 	}
 	session.Values["userID"] = user.ID
 	session.Save(req, rw)
@@ -244,12 +249,13 @@ func GenerateRandomString(s int) (string, error) {
 //    regenerating the hash, if a new password is passed then it regenerates the hash.
 //  If an empty email e is passed then it keeps the orginal rather than updating it,
 //    if a new email is passedn then it updates it.
-func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e string, po string, pn string) error {
+func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e string, po string, pn string, ac int) error {
 	var (
-		id    int
-		email string
-		hash  []byte
-		ok    bool
+		id     int
+		email  string
+		hash   []byte
+		active int
+		ok     bool
 	)
 	if i != 0 {
 		id = i
@@ -288,12 +294,34 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 	} else {
 		email = user.Email
 	}
+	if ac == 1 {
+		active = ac
+	} else {
+		active = 0
+	}
 
-	newuser := UserData{ID: id, Email: email, Hash: hash, Role: user.Role}
+	newuser := UserData{ID: id, Email: email, Hash: hash, Role: user.Role, Active: active}
 
 	err = a.backend.SaveUser(newuser)
 	if err != nil {
 		a.addMessage(rw, req, err.Error())
+	}
+	return nil
+}
+
+// Activate checks if the confirm key is correct to the user, and then
+// activate his account.
+func (a Authorizer) Activate(rw http.ResponseWriter, req *http.Request, e string, key string) error {
+	user, err := a.backend.UserByEmail(e)
+	if err != nil {
+		a.addMessage(rw, req, "Invalid username or password.")
+		return mkerror("user not found")
+	}
+	if user.ConfirmKey == key {
+		a.Update(rw, req, user.ID, "", "", "", 1)
+	} else {
+		a.addMessage(rw, req, "Invalid confirmation key")
+		return mkerror("invalid confirmation key")
 	}
 	return nil
 }
@@ -321,7 +349,6 @@ func (a Authorizer) Authorize(rw http.ResponseWriter, req *http.Request, redirec
 	id := authSession.Values["userID"]
 	if !authSession.IsNew && id != nil {
 		_, err := a.backend.UserByID(id.(int))
-		//_, err := a.backend.User(username.(string))
 		if err == ErrMissingUser {
 			authSession.Options.MaxAge = -1 // kill the cookie
 			authSession.Save(req, rw)
