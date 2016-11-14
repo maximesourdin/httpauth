@@ -75,7 +75,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyemailstmt: %v", err))
 		}
-		b.userByIDStmt, err = db.Prepare(`select email, hash, role, active from "USER" where id = $1`)
+		b.userByIDStmt, err = db.Prepare(`select id, email, hash, role, active, confirm_key from "USER" where id = $1`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyidstmt: %v", err))
 		}
@@ -100,7 +100,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userstmt: %v", err))
 		}
-		b.userByIDStmt, err = db.Prepare(`select id, hash, role, active from "USER" where id = ?`)
+		b.userByIDStmt, err = db.Prepare(`select id, email, hash, role, active, confirm_key from "USER" where id = ?`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("userbyidstmt: %v", err))
 		}
@@ -121,7 +121,6 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 			return b, mksqlerror(fmt.Sprintf("deletestmt: %v", err))
 		}
 	}
-
 	return b, nil
 }
 
@@ -144,7 +143,7 @@ func (b SqlAuthBackend) UserByEmail(email string) (user UserData, e error) {
 // ErrMissingUser if user is not found.
 func (b SqlAuthBackend) UserByID(id int) (user UserData, e error) {
 	row := b.userByIDStmt.QueryRow(id)
-	err := row.Scan(&user.Email, &user.Hash, &user.Role, &user.Active)
+	err := row.Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Active, &user.ConfirmKey)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return user, ErrMissingUser

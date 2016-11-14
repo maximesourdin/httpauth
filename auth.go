@@ -311,12 +311,17 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 
 // Activate checks if the confirm key is correct to the user, and then
 // activate his account.
-func (a Authorizer) Activate(rw http.ResponseWriter, req *http.Request, e string, key string) error {
-	user, err := a.backend.UserByEmail(e)
+func (a Authorizer) Activate(rw http.ResponseWriter, req *http.Request, i int, key string) error {
+	user, err := a.backend.UserByID(i)
 	if err != nil {
 		a.addMessage(rw, req, "Invalid username or password.")
 		return mkerror("user not found")
 	}
+	if user.Active == 1 {
+		a.addMessage(rw, req, "User already active.")
+		return mkerror("user already active")
+	}
+
 	if user.ConfirmKey == key {
 		a.Update(rw, req, user.ID, "", "", "", 1)
 	} else {
