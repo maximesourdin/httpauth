@@ -57,7 +57,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		return b, mksqlerror(err.Error())
 	}
 	b.db = db
-	_, err = db.Exec(`create table if not exists "USER" (id SERIAL PRIMARY KEY NOT NULL, email varchar(255), hash varchar(255), role varchar(255))`)
+	_, err = db.Exec(`create table if not exists "USER" (id SERIAL PRIMARY KEY NOT NULL, email varchar(255), hash varchar(255), role varchar(255), confirm_key varchar(255))`)
 	if err != nil {
 		return b, mksqlerror(err.Error())
 	}
@@ -83,7 +83,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("usersstmt: %v", err))
 		}
-		b.insertStmt, err = db.Prepare(`insert into "USER" (email, hash, role) values ($1, $2, $3)`)
+		b.insertStmt, err = db.Prepare(`insert into "USER" (email, hash, role, confirm_key) values ($1, $2, $3, $4)`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("insertstmt: %v", err))
 		}
@@ -108,7 +108,7 @@ func NewSqlAuthBackend(driverName, dataSourceName string) (b SqlAuthBackend, e e
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("usersstmt: %v", err))
 		}
-		b.insertStmt, err = db.Prepare(`insert into "USER" (id, email, hash, role) values (?, ?, ?, ?)`)
+		b.insertStmt, err = db.Prepare(`insert into "USER" (id, email, hash, role, confirm_key) values (?, ?, ?, ?, ?)`)
 		if err != nil {
 			return b, mksqlerror(fmt.Sprintf("insertstmt: %v", err))
 		}
@@ -181,7 +181,7 @@ func (b SqlAuthBackend) SaveUser(user UserData) (err error) {
 	if _, err := b.UserByID(user.ID); err == nil {
 		_, err = b.updateStmt.Exec(user.Email, user.Hash, user.Role, user.ID)
 	} else {
-		_, err = b.insertStmt.Exec(user.Email, user.Hash, user.Role)
+		_, err = b.insertStmt.Exec(user.Email, user.Hash, user.Role, user.ConfirmKey)
 	}
 	return
 }
