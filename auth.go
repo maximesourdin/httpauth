@@ -65,7 +65,7 @@ type Authorizer struct {
 // The AuthBackend interface defines a set of methods an AuthBackend must
 // implement.
 type AuthBackend interface {
-	SaveUser(u UserData) error
+	SaveUser(u UserData) (e error)
 	UserByEmail(email string) (user UserData, e error)
 	UserByID(id int) (user UserData, e error)
 	Users() (users []UserData, e error)
@@ -158,34 +158,34 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, e string, p
 //
 // Pass in a instance of UserData with at least a username and email specified. If no role
 // is given, the default one is used.
-func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user UserData, password string) error {
+func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user UserData, password string) (UserData, error) {
 
 	if user.Email == "" {
-		return mkerror("no email given")
+		return user, mkerror("no email given")
 	}
 	if user.Hash != nil {
-		return mkerror("hash will be overwritten")
+		return user, mkerror("hash will be overwritten")
 	}
 	if password == "" {
-		return mkerror("no password given")
+		return user, mkerror("no password given")
 	}
 
 	// Validate email
 	_, err := a.backend.UserByEmail(user.Email)
 	if err == nil {
 		a.addMessage(rw, req, "Email has been taken.")
-		return mkerror("user already exists")
+		return user, mkerror("user already exists")
 	} else if err != ErrMissingUser {
 		if err != nil {
-			return mkerror(err.Error())
+			return user, mkerror(err.Error())
 		}
-		return nil
+		return user, nil
 	}
 
 	// Generate and save hash
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return mkerror("couldn't save password: " + err.Error())
+		return user, mkerror("couldn't save password: " + err.Error())
 	}
 	user.Hash = hash
 
@@ -193,7 +193,7 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 	// Example: this will give us a 44 byte, base64 encoded output
 	token, err := GenerateRandomString(32)
 	if err != nil {
-		return mkerror("couldn't save the confirm key: " + err.Error())
+		return user, mkerror("couldn't save the confirm key: " + err.Error())
 	}
 	user.ConfirmKey = token
 
@@ -202,16 +202,17 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 		user.Role = a.defaultRole
 	} else {
 		if _, ok := a.roles[user.Role]; !ok {
-			return mkerror("nonexistent role")
+			return user, mkerror("nonexistent role")
 		}
 	}
 
 	err = a.backend.SaveUser(user)
 	if err != nil {
 		a.addMessage(rw, req, err.Error())
-		return mkerror(err.Error())
+		return user, mkerror(err.Error())
 	}
-	return nil
+	user, err = a.backend.UserByEmail(user.Email)
+	return user, nil
 }
 
 // GenerateRandomBytes returns securely generated random bytes.
@@ -296,8 +297,6 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 	}
 	if ac == 1 {
 		active = ac
-	} else {
-		active = 0
 	}
 
 	newuser := UserData{ID: id, Email: email, Hash: hash, Role: user.Role, Active: active}
@@ -321,9 +320,11 @@ func (a Authorizer) Activate(rw http.ResponseWriter, req *http.Request, i int, k
 		a.addMessage(rw, req, "User already active.")
 		return mkerror("user already active")
 	}
-
 	if user.ConfirmKey == key {
-		a.Update(rw, req, user.ID, "", "", "", 1)
+		err = a.Update(rw, req, user.ID, "", "", "", 1)
+		if err != nil {
+			return mkerror("couldn't update user")
+		}
 	} else {
 		a.addMessage(rw, req, "Invalid confirmation key")
 		return mkerror("invalid confirmation key")
