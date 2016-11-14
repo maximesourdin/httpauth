@@ -171,7 +171,7 @@ func (b SqlAuthBackend) Users() (us []UserData, e error) {
 		if err != nil {
 			return us, mksqlerror(err.Error())
 		}
-		us = append(us, UserData{id, email, hash, role})
+		us = append(us, UserData{ID: id, Email: email, Hash: hash, Role: role})
 	}
 	return us, nil
 }
