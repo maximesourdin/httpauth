@@ -161,7 +161,7 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, e string, p
 	return nil
 }
 
-func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request) error {
+func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request, e string, dest string) error {
 	session, _ := a.cookiejar.Get(req, "auth")
 
 	code := req.FormValue("code")
