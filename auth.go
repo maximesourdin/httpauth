@@ -23,7 +23,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
-	"string"
+	"fmt"
+	"strings"
 	"strconv"
 
 	"github.com/gorilla/sessions"
@@ -179,11 +180,13 @@ func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request,
 		a.addMessage(rw, req, "Account not active.")
 		return mkerror("Account not active")
 	}
-	accessToken := GetAccessToken(ClientId, code, ClientSecret, "")
+	accessToken := getAccessToken(ClientId, code, ClientSecret, "")
 	fmt.Println(accessToken)
 	if response, err := http.Get("https://graph.facebook.com/me?access_token=" + accessToken.Token); err != nil {
 		a.addMessage(rw, req, "Error")
 		return mkerror("Cannot connect to Facebook")
+	} else {
+		fmt.Println(response)
 	}
 
 	session.Values["userID"] = user.ID
@@ -521,4 +524,26 @@ func getAccessToken(client_id string, code string, secret string, callbackUri st
  	var token AccessToken
 
  	return token
+ }
+
+ func readHttpBody(response *http.Response) string {
+
+ 	fmt.Println("Reading body")
+
+ 	bodyBuffer := make([]byte, 5000)
+ 	var str string
+
+ 	count, err := response.Body.Read(bodyBuffer)
+
+ 	for ; count > 0; count, err = response.Body.Read(bodyBuffer) {
+
+ 		if err != nil {
+
+ 		}
+
+ 		str += string(bodyBuffer[:count])
+ 	}
+
+ 	return str
+
  }
