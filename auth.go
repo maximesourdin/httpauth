@@ -23,6 +23,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"string"
+	"strconv"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -71,6 +73,11 @@ type AuthBackend interface {
 	Users() (users []UserData, e error)
 	DeleteUser(email string) error
 	Close()
+}
+
+type AccessToken struct {
+   Token  string
+   Expiry int64
 }
 
 // Helper function to add a user directed message to a message queue.
@@ -150,6 +157,44 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, e string, p
 		dest = flashes[0].(string)
 	}
 	http.Redirect(rw, req, dest, http.StatusSeeOther)
+	return nil
+}
+
+func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request, e string, p string, dest string) error {
+	session, _ := a.cookiejar.Get(req, "auth")
+
+	code := req.FormValue("code")
+	ClientId := "693400277501957"
+	ClientSecret := "LesCouillesDeMaximeSententLePate"
+
+	user, err := a.backend.UserByEmail(e)
+	if session.Values["userID"] == user.ID {
+		return mkerror("already authenticated")
+	}
+	if err != nil {
+		a.addMessage(rw, req, "Invalid username or password.")
+		return mkerror("user not found")
+	}
+	if user.Active == 0 {
+		a.addMessage(rw, req, "Account not active.")
+		return mkerror("Account not active")
+	}
+	accessToken := GetAccessToken(ClientId, code, ClientSecret, "")
+	fmt.Println(accessToken)
+	if response, err := http.Get("https://graph.facebook.com/me?access_token=" + accessToken.Token); err != nil {
+		a.addMessage(rw, req, "Error")
+		return mkerror("Cannot connect to Facebook")
+	}
+
+	session.Values["userID"] = user.ID
+	session.Save(req, rw)
+
+	redirectSession, _ := a.cookiejar.Get(req, "redirects")
+	if flashes := redirectSession.Flashes(); len(flashes) > 0 {
+		dest = flashes[0].(string)
+	}
+	http.Redirect(rw, req, dest, http.StatusSeeOther)
+
 	return nil
 }
 
@@ -447,3 +492,33 @@ func (a Authorizer) Messages(rw http.ResponseWriter, req *http.Request) []string
 	}
 	return messages
 }
+
+func getAccessToken(client_id string, code string, secret string, callbackUri string) AccessToken {
+ 	fmt.Println("GetAccessToken")
+ 	//https://graph.facebook.com/oauth/access_token?client_id=YOUR_APP_ID&redirect_uri=YOUR_REDIRECT_URI&client_secret=YOUR_APP_SECRET&code=CODE_GENERATED_BY_FACEBOOK
+ 	response, err := http.Get("https://graph.facebook.com/oauth/access_token?client_id=" +
+ 		client_id + "&redirect_uri=" + callbackUri +
+ 		"&client_secret=" + secret + "&code=" + code)
+
+ 	if err == nil {
+
+ 		auth := readHttpBody(response)
+
+ 		var token AccessToken
+
+ 		tokenArr := strings.Split(auth, "&")
+
+ 		token.Token = strings.Split(tokenArr[0], "=")[1]
+ 		expireInt, err := strconv.Atoi(strings.Split(tokenArr[1], "=")[1])
+
+ 		if err == nil {
+ 			token.Expiry = int64(expireInt)
+ 		}
+
+ 		return token
+ 	}
+
+ 	var token AccessToken
+
+ 	return token
+ }
