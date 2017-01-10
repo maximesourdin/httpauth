@@ -183,6 +183,7 @@ func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request,
 	accessToken := getAccessToken(ClientId, code, ClientSecret, "")
 	fmt.Println(accessToken)
 	if response, err := http.Get("https://graph.facebook.com/me?access_token=" + accessToken.Token); err != nil {
+		fmt.Println(response)
 		a.addMessage(rw, req, "Error")
 		return mkerror("Cannot connect to Facebook")
 	} else {
