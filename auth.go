@@ -505,8 +505,11 @@ func getAccessToken(client_id string, code string, secret string, callbackUri st
  		"&client_secret=" + secret + "&code=" + code)
 
  	if err == nil {
+		fmt.Println(response)
 
  		auth := readHttpBody(response)
+
+		fmt.Println(auth)
 
  		var token AccessToken
 
@@ -534,12 +537,17 @@ func getAccessToken(client_id string, code string, secret string, callbackUri st
  	bodyBuffer := make([]byte, 5000)
  	var str string
 
- 	count, err := response.Body.Read(bodyBuffer)
+	fmt.Println("test")
+	fmt.Println(response)
+	fmt.Println("Reading")
+
 
  	for ; count > 0; count, err = response.Body.Read(bodyBuffer) {
 
+		fmt.Println("after Reading")
  		if err != nil {
-
+			fmt.Println(err)
+			return err
  		}
 
  		str += string(bodyBuffer[:count])
