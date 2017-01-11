@@ -23,9 +23,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
-	"fmt"
-	"strings"
-	"strconv"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
