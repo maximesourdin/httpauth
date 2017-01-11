@@ -547,7 +547,6 @@ func getAccessToken(client_id string, code string, secret string, callbackUri st
 
  		if err != nil {
 			fmt.Println(err)
-			return err
  		}
 
  		str += string(bodyBuffer[:count])
