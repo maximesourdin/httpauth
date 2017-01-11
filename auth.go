@@ -164,10 +164,6 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, e string, p
 func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request, e string, dest string) error {
 	session, _ := a.cookiejar.Get(req, "auth")
 
-	code := req.FormValue("code")
-	ClientId := "693400277501957"
-	ClientSecret := "LesCouillesDeMaximeSententLePate"
-
 	user, err := a.backend.UserByEmail(e)
 	if session.Values["userID"] == user.ID {
 		return mkerror("already authenticated")
@@ -179,15 +175,6 @@ func (a Authorizer) LoginWithFacebook(rw http.ResponseWriter, req *http.Request,
 	if user.Active == 0 {
 		a.addMessage(rw, req, "Account not active.")
 		return mkerror("Account not active")
-	}
-	accessToken := getAccessToken(ClientId, code, ClientSecret, "")
-	fmt.Println(accessToken)
-	if response, err := http.Get("https://graph.facebook.com/me?access_token=" + accessToken.Token); err != nil {
-		fmt.Println(response)
-		a.addMessage(rw, req, "Error")
-		return mkerror("Cannot connect to Facebook")
-	} else {
-		fmt.Println(response)
 	}
 
 	session.Values["userID"] = user.ID
