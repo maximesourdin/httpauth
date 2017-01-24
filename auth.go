@@ -341,6 +341,38 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, i int, e s
 	return nil
 }
 
+func (a Authorizer) ResetPassword(rw http.ResponseWriter, req *http.Request, user_id int, newPassword string) error {
+
+	user, err := a.backend.UserByID(user_id)
+	if err == ErrMissingUser {
+		a.addMessage(rw, req, "User doesn't exist.")
+		return mkerror("user doesn't exists")
+	} else if err != nil {
+		return mkerror(err.Error())
+	}
+
+	if newPassword == "" {
+		return mkerror("no password given")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return mkerror("couldn't save password: " + err.Error())
+	}
+
+	user.Hash = hash
+	email := user.Email
+	active := 1
+
+	newuser := UserData{ID: user_id, Email: email, Hash: hash, Role: user.Role, Active: active}
+
+	err = a.backend.SaveUser(newuser)
+	if err != nil {
+		a.addMessage(rw, req, err.Error())
+	}
+	return nil
+}
+
 // Activate checks if the confirm key is correct to the user, and then
 // activate his account.
 func (a Authorizer) Activate(rw http.ResponseWriter, req *http.Request, i int, key string) error {
